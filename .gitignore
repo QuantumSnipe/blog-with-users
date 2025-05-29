@@ -1,0 +1,20 @@
+# --- Python / Flask ---
+.venv/
+env/
+__pycache__/
+*.py[cod]
+# compiled objects
+*.so
+# IDE cruft
+.vscode/
+.idea/
+# OS junk
+.DS_Store
+# DB & secrets
+instance/
+*.sqlite3
+posts.db
+# generated assets
+*.log
+coverage/
+htmlcov/
