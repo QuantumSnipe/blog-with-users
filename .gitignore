@@ -18,3 +18,4 @@ posts.db
 *.log
 coverage/
 htmlcov/
+.env

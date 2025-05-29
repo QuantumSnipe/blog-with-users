@@ -12,11 +12,15 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from forms import RegisterForm, CreatePostForm, LoginForm, CommentForm
 from typing import List
 import psycopg
+import os
+from dotenv import find_dotenv, load_dotenv
 
 
+dotenv_path = find_dotenv()
+load_dotenv(dotenv_path)
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = '8BYkEfBA6O6donzWlSihBXox7C0sKR6b'
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 ckeditor = CKEditor(app)
 Bootstrap5(app)
 
@@ -47,7 +51,7 @@ def admin_required(f):
 # CREATE DATABASE
 class Base(DeclarativeBase):
     pass
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///posts.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('SQLALCHEMY_DATABASE_URL')
 db = SQLAlchemy(model_class=Base)
 db.init_app(app)
 
