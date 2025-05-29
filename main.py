@@ -11,7 +11,6 @@ from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 from forms import RegisterForm, CreatePostForm, LoginForm, CommentForm
 from typing import List
-import psycopg
 import os
 from dotenv import find_dotenv, load_dotenv
 
