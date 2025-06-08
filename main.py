@@ -241,7 +241,6 @@ def edit_post(post_id):
     
     return render_template("make-post.html", form=edit_form, is_edit=True, current_user=current_user)
 
-
 @app.route("/delete/<int:post_id>")
 @login_required
 @admin_required
@@ -250,7 +249,6 @@ def delete_post(post_id):
     db.session.delete(post_to_delete)
     db.session.commit()
     return redirect(url_for('get_all_posts'))
-
 
 @app.route("/about")
 def about():
@@ -302,4 +300,4 @@ def send_email(to_addr: str, subject: str, body: str):
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5002)
+    app.run(debug=False, port=5002)
