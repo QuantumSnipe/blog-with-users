@@ -13,6 +13,7 @@ from forms import RegisterForm, CreatePostForm, LoginForm, CommentForm
 from typing import List
 import os
 from dotenv import find_dotenv, load_dotenv
+import smtplib
 
 
 dotenv_path = find_dotenv()
@@ -50,7 +51,10 @@ def admin_required(f):
 # CREATE DATABASE
 class Base(DeclarativeBase):
     pass
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
+db_uri = os.getenv("DATABASE_URL")
+if db_uri.startswith("postgres://"):
+    db_uri = db_uri.replace("postgres://", "postgresql://", 1)
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///blog.db"
 db = SQLAlchemy(model_class=Base)
 db.init_app(app)
 
@@ -263,14 +267,37 @@ def delete_comment(comment_id):
     flash("Comment deleted successfully.")
     return redirect(url_for("show_post", post_id=comment.post_id))
 
-
-@app.route("/contact")
-def contact():
-    return render_template("contact.html")
-
 @app.context_processor
 def inject_now():
     return {'now': datetime.utcnow}
+
+MAIL_ADDRESS = os.getenv('MAIL_ADDRESS')
+MAIL_APP_PW = os.getenv('MAIL_APP_PW')
+
+@app.route("/contact", methods=["GET", "POST"])
+def contact():
+    if request.method == "POST":
+        name = request.form['name']
+        email = request.form['email']
+        phone = request.form['phone']
+        message = request.form['message']
+
+        send_email(
+            to_addr=MAIL_ADDRESS,
+            subject=f"Message from {name} <{email}>",
+            body=message
+        )
+        flash("Thanks! Your note is on its way.")
+        return redirect(url_for("contact"))
+    
+    return render_template("contact.html")
+
+def send_email(to_addr: str, subject: str, body: str):
+    email_message = f"Subject:{subject}\n\n{body}"
+    with smtplib.SMTP("smtp.gmail.com", 587) as connection:
+        connection.starttls()
+        connection.login(MAIL_ADDRESS, MAIL_APP_PW)
+        connection.sendmail(MAIL_ADDRESS, to_addr, email_message)
 
 
 
