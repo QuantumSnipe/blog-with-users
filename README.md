@@ -35,7 +35,7 @@ Create a **.env** file in the project root:
 
 ```env
 SECRET_KEY="replace‑me"
-MAIL_ADDRESS="your_gmail@gmail.com"
+MAIL_ADDRESS="yourmail@mail.com"
 MAIL_APP_PW="16‑char‑app‑password"
 # Optional — defaults to SQLite if unset
 DATABASE_URL="postgresql://user:pass@host:5432/dbname"
