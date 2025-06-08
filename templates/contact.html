@@ -9,11 +9,12 @@
     <div class="row gx-4 gx-lg-5 justify-content-center">
       <div class="col-md-10 col-lg-8 col-xl-7">
         <div class="page-heading">
-          {% if msg_sent: %}
-          <h1>Successfully sent your message</h1>
-          {% else: %}
           <h1>Contact Me</h1>
-          {% endif %}
+          {% with messages = get_flashed_messages() %}
+            {% if messages %}
+            <p class="text-success lead">{{ messages[0] }}</p>
+            {% endif %}
+          {% endwith %}
           <span class="subheading">Have questions? I have answers.</span>
         </div>
       </div>
@@ -67,7 +68,7 @@
                 name="phone"
                 type="tel"
                 placeholder="Enter your phone number..."
-                required
+
               />
               <label for="phone">Phone Number</label>
             </div>
@@ -87,8 +88,7 @@
               class="btn btn-danger text-uppercase"
               id="submitButton"
               type="submit"
-            >
-              NOT USED in Day 69
+            >Submit
             </button>
           </form>
         </div>
