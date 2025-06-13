@@ -7,7 +7,7 @@ Write posts, chat in nested comments, and manage everything from your browser—
 
 | Category | Goodies |
 |----------|---------|
-| **Auth** | 🔑 Secure registration & login (Flask-Login) <br>👑 First registered user auto-promoted to <code>admin</code> |
+| **Auth** | 🔑 Secure registration & login (Flask-Login) <br>✉️ Email password resets <br>👑 First registered user auto-promoted to <code>admin</code> |
 | **Content** | 📝 Rich-text posts via CKEditor 5 <br>🖼️ Gravatar avatars |
 | **Community** | 💬 Threaded / nested comments <br>🗑️ Admins can delete any post or comment |
 | **Comms** | 📬 Contact form → Gmail SMTP (env-var creds) |
@@ -40,6 +40,9 @@ MAIL_APP_PW="16‑char‑app‑password"
 # Optional — defaults to SQLite if unset
 DATABASE_URL="postgresql://user:pass@host:5432/dbname"
 ```
+
+`MAIL_ADDRESS` and `MAIL_APP_PW` must point to a Gmail account to send password
+reset and contact emails.
 
 Run the app:
 

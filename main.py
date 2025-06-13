@@ -9,7 +9,15 @@ from sqlalchemy.orm import relationship, DeclarativeBase, Mapped, mapped_column
 from sqlalchemy import Integer, String, Text, Boolean, ForeignKey, DateTime
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
-from forms import RegisterForm, CreatePostForm, LoginForm, CommentForm
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
+from forms import (
+    RegisterForm,
+    CreatePostForm,
+    LoginForm,
+    CommentForm,
+    PasswordResetRequestForm,
+    PasswordResetForm,
+)
 from typing import List
 import os
 from dotenv import find_dotenv, load_dotenv
@@ -23,6 +31,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 ckeditor = CKEditor(app)
 Bootstrap5(app)
+serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 
 # Configure Flask-Login
 login_manager = LoginManager()
@@ -165,6 +174,46 @@ def login():
 def logout():
     logout_user()
     return redirect(url_for('get_all_posts'))
+
+
+# Request password reset
+@app.route('/reset-password', methods=['GET', 'POST'])
+def reset_request():
+    form = PasswordResetRequestForm()
+    if form.validate_on_submit():
+        user = db.session.execute(db.select(User).where(User.email == form.email.data)).scalar()
+        if user:
+            token = serializer.dumps(user.email, salt='password-reset')
+            reset_url = url_for('reset_with_token', token=token, _external=True)
+            body = render_template('reset_email.txt', reset_url=reset_url)
+            send_email(to_addr=user.email, subject='Password Reset', body=body)
+        flash('If that email exists in our system, a reset link has been sent.')
+        return redirect(url_for('login'))
+    return render_template('reset_request.html', form=form, current_user=current_user)
+
+
+# Reset password via token
+@app.route('/reset/<token>', methods=['GET', 'POST'])
+def reset_with_token(token: str):
+    try:
+        email = serializer.loads(token, salt='password-reset', max_age=3600)
+    except (SignatureExpired, BadSignature):
+        flash('The reset link is invalid or has expired.')
+        return redirect(url_for('reset_request'))
+
+    form = PasswordResetForm()
+    if form.validate_on_submit():
+        user = db.session.execute(db.select(User).where(User.email == email)).scalar()
+        if user:
+            user.password = generate_password_hash(
+                form.password.data,
+                method='pbkdf2:sha256',
+                salt_length=8,
+            )
+            db.session.commit()
+            flash('Your password has been updated.')
+            return redirect(url_for('login'))
+    return render_template('reset_password.html', form=form, current_user=current_user)
 
 
 @app.route('/')
