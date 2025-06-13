@@ -51,10 +51,16 @@ def admin_required(f):
 # CREATE DATABASE
 class Base(DeclarativeBase):
     pass
+
 db_uri = os.getenv("DATABASE_URL")
-if db_uri.startswith("postgres://"):
-    db_uri = db_uri.replace("postgres://", "postgresql://", 1)
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///blog.db"
+
+if db_uri:
+    if db_uri.startswith("postgres://"):
+        db_uri = db_uri.replace("postgres://", "postgresql://", 1)
+else:
+    db_uri = "sqlite:///blog.db"
+
+app.config["SQLALCHEMY_DATABASE_URI"] = db_uri
 db = SQLAlchemy(model_class=Base)
 db.init_app(app)
 
