@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, BooleanField, PasswordField
-from wtforms.validators import DataRequired, URL
+from wtforms.validators import DataRequired, URL, EqualTo
 from flask_ckeditor import CKEditorField
 
 
@@ -33,4 +33,20 @@ class LoginForm(FlaskForm):
 class CommentForm(FlaskForm):
     comment_text = CKEditorField("Comment", validators=[DataRequired()])
     submit = SubmitField("Submit Comment")
+
+
+# Form for requesting a password reset link
+class PasswordResetRequestForm(FlaskForm):
+    email = StringField("Email", validators=[DataRequired()])
+    submit = SubmitField("Send Reset Link")
+
+
+# Form for resetting the password via token
+class PasswordResetForm(FlaskForm):
+    password = PasswordField("New Password", validators=[DataRequired()])
+    confirm = PasswordField(
+        "Confirm Password",
+        validators=[DataRequired(), EqualTo("password", message="Passwords must match.")],
+    )
+    submit = SubmitField("Reset Password")
 
