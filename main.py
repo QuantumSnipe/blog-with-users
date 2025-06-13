@@ -10,6 +10,7 @@ from sqlalchemy import Integer, String, Text, Boolean, ForeignKey, DateTime
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
+from pywebpush import webpush, WebPushException
 from forms import (
     RegisterForm,
     CreatePostForm,
@@ -22,6 +23,7 @@ from typing import List
 import os
 from dotenv import find_dotenv, load_dotenv
 import smtplib
+import json
 
 
 dotenv_path = find_dotenv()
@@ -29,6 +31,8 @@ load_dotenv(dotenv_path)
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
+VAPID_PUBLIC_KEY = os.getenv('VAPID_PUBLIC_KEY')
+VAPID_PRIVATE_KEY = os.getenv('VAPID_PRIVATE_KEY')
 ckeditor = CKEditor(app)
 Bootstrap5(app)
 serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
@@ -85,6 +89,7 @@ class User(UserMixin, db.Model):
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     posts = relationship('BlogPost', back_populates='author')
     comments = relationship('Comment', back_populates='author')
+    push_subscriptions = relationship('PushSubscription', back_populates='user', cascade='all, delete-orphan')
 
 
 class BlogPost(db.Model):
@@ -112,6 +117,14 @@ class Comment(db.Model):
     replies = relationship('Comment', back_populates='parent', cascade='all, delete-orphan')
     author = relationship('User', back_populates='comments')
     post = relationship('BlogPost', back_populates='comments')
+
+
+class PushSubscription(db.Model):
+    __tablename__ = 'push_subscriptions'
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey('users.id'))
+    data: Mapped[str] = mapped_column(Text)
+    user = relationship('User', back_populates='push_subscriptions')
 
     
 
@@ -245,6 +258,10 @@ def show_post(post_id):
         )
         db.session.add(comment)
         db.session.commit()
+        post_author = requested_post.author
+        if post_author.email:
+            send_email(post_author.email, 'New comment', form.comment_text.data)
+        broadcast_push('New comment', form.comment_text.data, post_author)
         flash("Comment added successfully.")
         return redirect(url_for('show_post', post_id=post_id))
     
@@ -268,6 +285,10 @@ def add_new_post():
         )
         db.session.add(new_post)
         db.session.commit()
+        for user in db.session.execute(db.select(User)).scalars().all():
+            if user.email:
+                send_email(user.email, f'New post: {new_post.title}', new_post.subtitle)
+        broadcast_push('New post', new_post.title)
         return redirect(url_for("get_all_posts"))
     
     return render_template("make-post.html", form=form, current_user=current_user)
@@ -320,9 +341,27 @@ def delete_comment(comment_id):
     flash("Comment deleted successfully.")
     return redirect(url_for("show_post", post_id=comment.post_id))
 
+
+@app.route('/subscribe', methods=['POST'])
+@login_required
+def subscribe():
+    data = request.get_json()
+    if not data:
+        abort(400)
+    existing = db.session.execute(
+        db.select(PushSubscription).where(PushSubscription.user_id == current_user.id)
+    ).scalars().first()
+    if existing:
+        existing.data = json.dumps(data)
+    else:
+        sub = PushSubscription(user_id=current_user.id, data=json.dumps(data))
+        db.session.add(sub)
+    db.session.commit()
+    return '', 201
+
 @app.context_processor
 def inject_now():
-    return {'now': datetime.utcnow}
+    return {'now': datetime.utcnow, 'vapid_public_key': VAPID_PUBLIC_KEY}
 
 MAIL_ADDRESS = os.getenv('MAIL_ADDRESS')
 MAIL_APP_PW = os.getenv('MAIL_APP_PW')
@@ -351,6 +390,28 @@ def send_email(to_addr: str, subject: str, body: str):
         connection.starttls()
         connection.login(MAIL_ADDRESS, MAIL_APP_PW)
         connection.sendmail(MAIL_ADDRESS, to_addr, email_message)
+
+
+def send_push(subscription_info: dict, payload: dict):
+    try:
+        webpush(
+            subscription_info=subscription_info,
+            data=json.dumps(payload),
+            vapid_private_key=VAPID_PRIVATE_KEY,
+            vapid_public_key=VAPID_PUBLIC_KEY,
+            vapid_claims={"sub": f"mailto:{MAIL_ADDRESS}" if MAIL_ADDRESS else ""},
+        )
+    except WebPushException:
+        pass
+
+
+def broadcast_push(title: str, body: str, user: User | None = None):
+    query = db.select(PushSubscription)
+    if user:
+        query = query.where(PushSubscription.user_id == user.id)
+    subs = db.session.execute(query).scalars().all()
+    for sub in subs:
+        send_push(json.loads(sub.data), {"title": title, "body": body})
 
 
 

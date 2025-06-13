@@ -37,6 +37,9 @@ Create a **.env** file in the project root:
 SECRET_KEY="replace‑me"
 MAIL_ADDRESS="yourmail@mail.com"
 MAIL_APP_PW="16‑char‑app‑password"
+# VAPID keys for push notifications
+VAPID_PUBLIC_KEY="your-public-key"
+VAPID_PRIVATE_KEY="your-private-key"
 # Optional — defaults to SQLite if unset
 DATABASE_URL="postgresql://user:pass@host:5432/dbname"
 ```
