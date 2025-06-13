@@ -22,8 +22,30 @@ include "header.html" %}
   <div class="container">
     <div class="row">
       <div class="col-lg-8 col-md-10 mx-auto">
-        <!--TODO: render your registration form here-->
-        {{ render_form(form, novalidate=True, button_map={"submit": "primary"}) }}
+        <form method="POST">
+          {{ form.csrf_token }}
+          <div class="mb-3">
+            {{ form.name.label }}
+            {{ form.name(class="form-control") }}
+          </div>
+          <div class="mb-3">
+            {{ form.email.label }}
+            {{ form.email(class="form-control") }}
+          </div>
+          <div class="mb-3">
+            {{ form.password.label }}
+            {{ form.password(class="form-control") }}
+          </div>
+          <div class="form-check mb-3">
+            {{ form.accept_rules(class="form-check-input") }}
+            {{ form.accept_rules.label(class="form-check-label") }}
+          </div>
+          <div class="form-check mb-3">
+            {{ form.notify_by_email(class="form-check-input") }}
+            {{ form.notify_by_email.label(class="form-check-label") }}
+          </div>
+          {{ form.submit(class="btn btn-primary") }}
+        </form>
       </div>
     </div>
   </div>

@@ -19,6 +19,7 @@ class RegisterForm(FlaskForm):
     password = PasswordField("Password", validators=[DataRequired()])
     email = StringField("Email Adress")
     accept_rules = BooleanField("I accept the site rules")
+    notify_by_email = BooleanField("Notify me about new posts", default=True)
     submit = SubmitField("Sign Me Up!")
 
 

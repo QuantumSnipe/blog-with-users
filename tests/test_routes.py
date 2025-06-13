@@ -46,6 +46,7 @@ def test_register_and_login(client):
             'email': 'tester@example.com',
             'password': 'secret',
             'accept_rules': True,
+            'notify_by_email': True,
             'submit': 'Sign Me Up!'
         }
         response = app.test_client().post('/register', data=register_data, follow_redirects=True)
@@ -70,6 +71,7 @@ def test_password_reset_flow(monkeypatch):
             'email': 'tester@example.com',
             'password': 'secret',
             'accept_rules': True,
+            'notify_by_email': True,
             'submit': 'Sign Me Up!'
         }
         app.test_client().post('/register', data=register_data, follow_redirects=True)
@@ -99,3 +101,92 @@ def test_password_reset_flow(monkeypatch):
         assert response.status_code == 200
         user = db.session.execute(db.select(importlib.import_module('main').User).where(importlib.import_module('main').User.email == 'tester@example.com')).scalar()
         assert user and importlib.import_module('main').check_password_hash(user.password, 'newsecret')
+
+
+def test_new_post_notification_trigger(monkeypatch):
+    app, db = create_test_app()
+
+    with app.app_context():
+        client = app.test_client()
+        reg = {
+            'name': 'Admin',
+            'email': 'admin@example.com',
+            'password': 'secret',
+            'accept_rules': True,
+            'notify_by_email': True,
+            'submit': 'Sign Me Up!'
+        }
+        client.post('/register', data=reg, follow_redirects=True)
+        login_data = {
+            'email': 'admin@example.com',
+            'password': 'secret',
+            'submit': 'Let Me In!'
+        }
+        client.post('/login', data=login_data, follow_redirects=True)
+
+        triggered = {}
+
+        def fake_notify(post):
+            triggered['called'] = True
+
+        monkeypatch.setattr(importlib.import_module('main'), 'send_new_post_notification', fake_notify)
+
+        post_data = {
+            'title': 'Test',
+            'subtitle': 'Sub',
+            'img_url': 'http://example.com/img.jpg',
+            'body': 'Body',
+            'submit': 'Submit Post'
+        }
+        client.post('/new-post', data=post_data, follow_redirects=True)
+
+        assert triggered.get('called')
+
+
+def test_comment_notification_trigger(monkeypatch):
+    app, db = create_test_app()
+
+    with app.app_context():
+        client = app.test_client()
+        reg_admin = {
+            'name': 'Admin',
+            'email': 'admin@example.com',
+            'password': 'secret',
+            'accept_rules': True,
+            'notify_by_email': True,
+            'submit': 'Sign Me Up!'
+        }
+        client.post('/register', data=reg_admin, follow_redirects=True)
+        client.post('/login', data={'email': 'admin@example.com', 'password': 'secret', 'submit': 'Let Me In!'}, follow_redirects=True)
+        post_data = {
+            'title': 'First',
+            'subtitle': 'Sub',
+            'img_url': 'http://example.com/img.jpg',
+            'body': 'Body',
+            'submit': 'Submit Post'
+        }
+        client.post('/new-post', data=post_data, follow_redirects=True)
+        client.get('/logout')
+
+        reg_user = {
+            'name': 'User',
+            'email': 'user@example.com',
+            'password': 'secret',
+            'accept_rules': True,
+            'notify_by_email': True,
+            'submit': 'Sign Me Up!'
+        }
+        client.post('/register', data=reg_user, follow_redirects=True)
+        client.post('/login', data={'email': 'user@example.com', 'password': 'secret', 'submit': 'Let Me In!'}, follow_redirects=True)
+
+        triggered = {}
+
+        def fake_notify(comment):
+            triggered['called'] = True
+
+        monkeypatch.setattr(importlib.import_module('main'), 'send_comment_notification', fake_notify)
+
+        client.post('/post/1', data={'comment_text': 'Hi', 'submit': 'Submit Comment'}, follow_redirects=True)
+
+        assert triggered.get('called')
+

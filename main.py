@@ -22,6 +22,7 @@ from typing import List
 import os
 from dotenv import find_dotenv, load_dotenv
 import smtplib
+from notifications import send_new_post_notification, send_comment_notification
 
 
 dotenv_path = find_dotenv()
@@ -83,6 +84,7 @@ class User(UserMixin, db.Model):
     email: Mapped[str] = mapped_column(String, unique=True)
     password: Mapped[str] = mapped_column(String(100))
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
+    notify_by_email: Mapped[bool] = mapped_column(Boolean, default=True)
     posts = relationship('BlogPost', back_populates='author')
     comments = relationship('Comment', back_populates='author')
 
@@ -144,7 +146,8 @@ def register():
             email=form.email.data,
             name=form.name.data,
             password=hash_and_salted_password,
-            is_admin=(user_count == 0)
+            is_admin=(user_count == 0),
+            notify_by_email=form.notify_by_email.data
         )
         db.session.add(new_user)
         db.session.commit()
@@ -245,6 +248,7 @@ def show_post(post_id):
         )
         db.session.add(comment)
         db.session.commit()
+        send_comment_notification(comment)
         flash("Comment added successfully.")
         return redirect(url_for('show_post', post_id=post_id))
     
@@ -268,6 +272,7 @@ def add_new_post():
         )
         db.session.add(new_post)
         db.session.commit()
+        send_new_post_notification(new_post)
         return redirect(url_for("get_all_posts"))
     
     return render_template("make-post.html", form=form, current_user=current_user)
